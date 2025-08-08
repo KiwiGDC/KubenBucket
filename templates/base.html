@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "Transfert de fichier sécurisé" }}</title>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .form-container {
+      background: white;
+      padding: 30px;
+      margin-top: 80px;
+      border-radius: 10px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    input[type="file"],
+    input[type="password"],
+    select,
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .progress {
+      background-color: #e0e0e0;
+      border-radius: 5px;
+      height: 20px;
+      overflow: hidden;
+      margin-top: 10px;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #007bff;
+      color: white;
+      text-align: center;
+      line-height: 20px;
+      transition: width 0.4s ease;
+    }
+
+    .progress-bar.success {
+      background-color: #28a745;
+    }
+
+    .progress-bar.error {
+      background-color: #dc3545;
+    }
+
+    .status-message {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .info {
+      background: #d1ecf1;
+      color: #0c5460;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    .copy-btn {
+      margin-left: 10px;
+      padding: 5px 10px;
+      font-size: 0.85em;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      background-color: #f1f1f1;
+      color: #333;
+      border-radius: 4px;
+      transition: background-color 0.3s ease;
+    }
+
+    .copy-btn:hover {
+      background-color: #e0e0e0;
+    }
+
+    .copy-feedback {
+      margin-left: 8px;
+      font-size: 0.85em;
+      color: #28a745;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+  <h3>Transférer un fichier</h3>
+  <form id="upload-form">
+    <label>Fichier</label>
+    <input type="file" id="file" name="file" required>
+
+    <label>Mot de passe (optionnel)</label>
+    <input type="password" id="password" name="password">
+
+    <label>Durée d’expiration</label>
+    <select id="expire" name="expire" required>
+      <option value="15min">15 minutes</option>
+      <option value="1h">1 heure</option>
+      <option value="24h" selected>24 heures</option>
+      <option value="7d">7 jours</option>
+    </select>
+
+    <button type="submit" id="submit-btn">Envoyer</button>
+
+    <!-- Progress Bar -->
+    <div class="progress" id="progress-container">
+      <div class="progress-bar" id="progress-bar">0%</div>
+    </div>
+
+    <div id="status" class="status-message"></div>
+  </form>
+</div>
+
+<script>
+document.getElementById("upload-form").addEventListener("submit", function(e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const formData = new FormData(form);
+
+  const xhr = new XMLHttpRequest();
+  const progressContainer = document.getElementById("progress-container");
+  const progressBar = document.getElementById("progress-bar");
+  const status = document.getElementById("status");
+  const submitBtn = document.getElementById("submit-btn");
+
+  progressContainer.style.display = "block";
+  progressBar.style.width = "0%";
+  progressBar.innerText = "0%";
+  progressBar.className = "progress-bar";
+  status.innerHTML = "";
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Envoi...";
+
+  xhr.upload.addEventListener("progress", function(e) {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      progressBar.style.width = percent + "%";
+      progressBar.innerText = percent + "%";
+    }
+  });
+
+  xhr.onload = function() {
+    if (xhr.status === 202) {
+      const data = JSON.parse(xhr.responseText);
+      const uploadId = data.upload_id;
+      status.innerHTML = `<div class="info">Fichier reçu. Analyse et upload en cours...</div>`;
+
+      // Ne pas réactiver le bouton tout de suite : on attend la fin du traitement
+      // submitBtn.disabled = false;  --> suppression
+
+      const intervalId = setInterval(() => {
+        fetch(`/status/${uploadId}`)
+          .then(res => res.json())
+          .then(resData => {
+            if (resData.status === "done") {
+              clearInterval(intervalId);
+              progressBar.style.width = "100%";
+              progressBar.innerText = "100%";
+              progressBar.classList.add("success");
+
+              status.innerHTML = `
+                <div class="success">
+                  ✅ Fichier prêt !<br>
+                  <strong>Lien :</strong>
+                  <span id="file-url" class="file-url">${location.origin + resData.url}</span>
+                  <button id="copy-btn" class="copy-btn" type="button">Copier</button>
+                  <span id="copy-feedback" class="copy-feedback" style="display:none;">Copié ✅</span>
+                </div>`;
+
+              const copyBtn = document.getElementById("copy-btn");
+              const feedback = document.getElementById("copy-feedback");
+              const urlText = document.getElementById("file-url").textContent;
+
+              copyBtn.addEventListener("click", () => {
+                navigator.clipboard.writeText(urlText).then(() => {
+                  feedback.style.display = "inline";
+                  setTimeout(() => feedback.style.display = "none", 2000);
+                });
+              });
+
+              // Réactiver le bouton après succès
+              submitBtn.disabled = false;
+              submitBtn.innerText = "Envoyer";
+
+              setTimeout(() => progressContainer.style.display = "none", 2000);
+            } else if (resData.status === "error") {
+              clearInterval(intervalId);
+              progressBar.classList.add("error");
+              status.innerHTML = `<div class="error">❌ ${resData.error_message || "Erreur lors du traitement."}</div>`;
+
+              // Réactiver le bouton après erreur
+              submitBtn.disabled = false;
+              submitBtn.innerText = "Envoyer";
+
+              setTimeout(() => progressContainer.style.display = "none", 2000);
+            }
+          })
+          .catch(() => {
+            clearInterval(intervalId);
+            progressBar.classList.add("error");
+            status.innerHTML = `<div class="error">❌ Erreur réseau.</div>`;
+
+            // Réactiver le bouton après erreur réseau
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Envoyer";
+
+            setTimeout(() => progressContainer.style.display = "none", 2000);
+          });
+      }, 10000);
+
+    } else {
+      const error = JSON.parse(xhr.responseText);
+      progressBar.classList.add("error");
+      status.innerHTML = `<div class="error">❌ ${error.error || "Erreur lors de l'envoi."}</div>`;
+
+      // Réactiver le bouton en cas d'erreur immédiate
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Envoyer";
+
+      setTimeout(() => progressContainer.style.display = "none", 2000);
+    }
+  };
+
+  xhr.onerror = function() {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "Envoyer";
+    progressBar.classList.add("error");
+    status.innerHTML = `<div class="error">❌ Erreur réseau.</div>`;
+    setTimeout(() => progressContainer.style.display = "none", 2000);
+  };
+
+  xhr.open("POST", "/upload");
+  xhr.send(formData);
+});
+</script>
+{% endblock %}

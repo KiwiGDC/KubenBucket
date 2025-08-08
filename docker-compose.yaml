@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    container_name: flask-file-transfer
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data               # Pour stocker la base SQLite
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=sqlite:////app/data/app.db
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/creds.json
+    restart: unless-stopped

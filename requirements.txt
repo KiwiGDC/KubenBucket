@@ -1,0 +1,20 @@
+# --- Web framework ---
+Flask==3.0.3
+
+# --- ORM & DB ---
+SQLAlchemy==2.0.30
+PyMySQL
+# --- Google Cloud Storage & Auth ---
+google-cloud-storage==2.16.0
+google-auth==2.29.0
+google-auth-oauthlib==1.2.0
+requests==2.31.0  # Requis par google-auth.transport.requests
+
+# --- Sécurité / Hashing ---
+bcrypt==4.1.2
+
+# --- Utilitaires ---
+python-dotenv==1.0.1
+
+# --- Serveur de production ---
+gunicorn==22.0.0

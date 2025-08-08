@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-container">
+  <h3 class="mb-4">Téléchargement sécurisé</h3>
+
+  {% if error %}
+    <div class="alert alert-danger" role="alert">
+      {{ error }}
+    </div>
+  {% endif %}
+
+  <form method="POST">
+    <p>Ce fichier est protégé. Veuillez entrer le mot de passe pour y accéder.</p>
+    <div class="mb-3">
+      <label for="password" class="form-label">Mot de passe</label>
+      <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-success w-100">Télécharger</button>
+  </form>
+</div>
+{% endblock %}
