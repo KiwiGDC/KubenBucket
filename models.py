@@ -10,6 +10,10 @@ class FileStatus(enum.Enum):
     done = "done"
     error = "error"
 
+class AccessScope(enum.Enum):
+    internal = "internal"
+    external = "external"
+
 class File(Base):
     __tablename__ = "files"
     id = Column(String(36), primary_key=True)  # UUID as str
@@ -19,4 +23,5 @@ class File(Base):
     password_hash = Column(LargeBinary, nullable=True)
     expires_at = Column(TIMESTAMP, nullable=False)
     status = Column(Enum(FileStatus), default=FileStatus.processing, nullable=False)
+    access_scope = Column(Enum(AccessScope), default=AccessScope.external, nullable=False)
     error_message = Column(String(255), nullable=True)

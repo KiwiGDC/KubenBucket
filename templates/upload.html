@@ -16,7 +16,10 @@
       <option value="24h" selected>24 heures</option>
       <option value="7d">7 jours</option>
     </select>
-
+    <label>
+      <input type="checkbox" id="access_internal" name="access_internal">
+      Accès interne uniquement
+    </label>
     <button type="submit" id="submit-btn">Envoyer</button>
 
     <!-- Progress Bar -->
@@ -34,12 +37,15 @@ document.getElementById("upload-form").addEventListener("submit", function(e) {
 
   const form = e.target;
   const formData = new FormData(form);
-
+  
   const xhr = new XMLHttpRequest();
   const progressContainer = document.getElementById("progress-container");
   const progressBar = document.getElementById("progress-bar");
   const status = document.getElementById("status");
   const submitBtn = document.getElementById("submit-btn");
+
+  formData.append("access_internal", document.getElementById("access_internal").checked);
+
 
   progressContainer.style.display = "block";
   progressBar.style.width = "0%";

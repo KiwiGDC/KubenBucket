@@ -10,6 +10,7 @@ from google.auth import default
 from google.auth.transport import requests
 from scan import scan_file
 from utils import generate_signed_url_with_access_token
+from models import AccessScope
 
 from models import Base
 from sqlalchemy import create_engine
@@ -86,9 +87,13 @@ def upload():
         file = request.files['file']
         password = request.form.get("password")
         expire = request.form.get("expire")  # "15min", "1h", etc.
-
+        access_internal = request.form.get("access_internal") == True
         upload_id = str(uuid.uuid4())
         filename = file.filename
+
+        access_scope = AccessScope.internal if access_internal else AccessScope.external
+
+
         tmp_filepath = f"/tmp/{upload_id}_{filename}"
         file.save(tmp_filepath)
 
@@ -106,7 +111,8 @@ def upload():
             id=upload_id,
             filename=filename,
             status=FileStatus.processing,
-            expires_at=datetime.now(timezone.utc) + expires_in 
+            expires_at=datetime.now(timezone.utc) + expires_in,
+            access_scope=access_scope
         )
         session.add(file_record)
         session.commit()
@@ -134,23 +140,30 @@ def status(file_id):
         "status": file_record.status.value,
     }
     if file_record.status == FileStatus.done:
-        resp["url"] = f"/download/{file_record.id}"
+        scope = file_record.access_scope.value
+        resp["url"] = f"/download/{scope}/{file_record.id}"
     elif file_record.status == FileStatus.error:
         resp["error_message"] = file_record.error_message
 
     return jsonify(resp)
 
-@app.route("/download/<uuid:file_id>", methods=["GET", "POST"])
+from flask import request
+
+@app.route("/download/internal/<uuid:file_id>", methods=["GET", "POST"])
+@app.route("/download/external/<uuid:file_id>", methods=["GET", "POST"])
 def download(file_id):
     session = Session()
     file = session.query(File).filter(File.id == str(file_id)).first()
 
-
-
-
     if not file:
         return render_template("error.html", message="Lien invalide"), 404
 
+    # Vérification du scope vs URL
+    requested_scope = "internal" if request.path.startswith("/download/internal/") else "external"
+    if file.access_scope.value != requested_scope:
+        return render_template("error.html", message="Accès non autorisé pour ce lien."), 403
+
+    # Vérification expiration
     expires_at = file.expires_at
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
@@ -158,12 +171,12 @@ def download(file_id):
     if datetime.now(timezone.utc) > expires_at:
         return render_template("error.html", message="Lien expiré"), 404
 
+    # Vérification mot de passe si nécessaire
     if file.password_hash:
         if request.method == "GET":
             return render_template("download_form.html")
         password = request.form.get("password", "")
         if not bcrypt.checkpw(password.encode(), file.password_hash):
             return render_template("download_form.html", error="Mot de passe incorrect.")
-
 
     return redirect(file.signed_url)
