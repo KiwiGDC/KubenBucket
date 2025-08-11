@@ -47,6 +47,55 @@ Ce projet **nécessite un déploiement sur Google Cloud**, via l’un des servic
 
 ---
 
+## 🚀 Déploiement avec Helm
+
+Ce projet inclut un chart Helm pour un déploiement simplifié sur Kubernetes (recommandé sur GKE).
+
+### Installation du chart
+
+1.  **Configurez votre contexte `kubectl`** pour qu'il pointe vers votre cluster GKE.
+2.  **Installez le chart** depuis le répertoire local :
+
+    ```bash
+    helm install my-release ./charts/kubenbucket
+    ```
+
+### Personnalisation du déploiement
+
+Vous pouvez surcharger les valeurs par défaut du chart en utilisant l'option `--set` ou en fournissant un fichier de valeurs personnalisé (`-f my-values.yaml`).
+
+#### Exemple : Mettre à jour l'image
+
+Pour déployer une version spécifique de votre application, vous pouvez surcharger les valeurs de l'image :
+
+```bash
+helm install my-release ./charts/kubenbucket \
+  --set image.repository=gcr.io/my-gcp-project/my-app \
+  --set image.tag=v1.2.3
+```
+
+#### Exemple : Configurer les variables d'environnement
+
+Les variables d'environnement nécessaires à l'application peuvent être définies dans le chart. Créez un fichier `my-values.yaml` :
+
+```yaml
+# my-values.yaml
+env:
+  GCS_BUCKET_NAME: "votre-nom-de-bucket"
+  DATABASE_URL: "mysql+pymysql://user:password@host:port/db"
+  SERVICE_ACCOUNT_EMAIL: "votre-email-de-service-account@gcp-project.iam.gserviceaccount.com"
+```
+
+Puis installez le chart avec ce fichier :
+
+```bash
+helm install my-release ./charts/kubenbucket -f my-values.yaml
+```
+
+> **Note :** La variable `GOOGLE_APPLICATION_CREDENTIALS` est généralement gérée via Workload Identity sur GKE et n'a pas besoin d'être définie explicitement dans le chart.
+
+---
+
 
 ## 🔄 Fonctionnement de l'application
 
