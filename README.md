@@ -44,7 +44,7 @@ Ce projet **nécessite un déploiement sur Google Cloud**, via l’un des servic
 | `GOOGLE_APPLICATION_CREDENTIALS` | Chemin vers le fichier JSON du service account | All |
 | `GCS_BUCKET_NAME`               | Nom du bucket GCS pour stocker les fichiers | All |
 | `GCS_PREFIX`                    | Prefix du dossier pour le manifest (Si le GCS est utilisé pour stocker metdata) | GCS |
-| `DATABASE_URL`                 | URL de connexion SQLAlchemy à ta base MySQL/PostgreSQL | DATABASE_URL |
+| `DATABASE_URL`                 | URL de connexion SQLAlchemy à ta base MySQL/PostgreSQL | DATABASE |
 | `SERVICE_ACCOUNT_EMAIL`        | Email du Service Account utilisé (pour signer les URLs GCS) | ALL |
 
 ---
