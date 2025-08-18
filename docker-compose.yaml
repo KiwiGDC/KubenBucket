@@ -5,10 +5,11 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/app/data               # Pour stocker la base SQLite
+      - ./data:/app/data
     env_file:
       - .env
     environment:
       - DATABASE_URL=sqlite:////app/data/app.db
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/creds.json
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/data/creds.json
+      - DATABASE_TYPE=GCS
     restart: unless-stopped

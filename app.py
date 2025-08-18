@@ -11,12 +11,20 @@ from google.auth.transport import requests
 from scan import scan_file
 from utils import generate_signed_url_with_access_token
 from enums.access_scope import AccessScope
+from gcs_client import GCSClient
 
 import threading
 from enums.file_status import FileStatus
 from repositories.base import FileRepository
 from repositories.sql import FileRepositoryDB
 from repositories.gcs import FileRepositoryGCS
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+)
+
 
 import pymysql
 pymysql.install_as_MySQLdb()
@@ -44,12 +52,13 @@ def get_repository() -> FileRepository:
 
 
 
+
 file_repository = get_repository()
 
 app = Flask(__name__)
 
 
-client = storage.Client()
+client = GCSClient.get_client()
 bucket_name = os.getenv("GCS_BUCKET")
 
 @app.route("/", methods=["GET"])
@@ -111,7 +120,7 @@ def upload():
         file = request.files['file']
         password = request.form.get("password")
         expire = request.form.get("expire")  # "15min", "1h", etc.
-        access_internal = request.form.get("access_internal") == True
+        access_internal = request.form.get("access_internal") == "on"
         upload_id = str(uuid.uuid4())
         filename = file.filename
 

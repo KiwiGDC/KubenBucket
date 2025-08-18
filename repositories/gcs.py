@@ -1,15 +1,18 @@
 import json
 from typing import Optional, List, Dict
 from google.cloud import storage
+from google.oauth2 import service_account
+import os
 from repositories.base import FileRepository
 from utils import encode_hash_to_b64, decode_hash_from_b64
-
+from gcs_client import GCSClient
 
 class FileRepositoryGCS(FileRepository):
     def __init__(self, bucket_name: str, prefix: str = "manifests/"):
         self.bucket_name = bucket_name
-        self.prefix = prefix  # Chemin dans le bucket
-        self.client = storage.Client()
+        self.prefix = prefix
+        self.client = GCSClient.get_client()
+        
         self.bucket = self.client.bucket(bucket_name)
 
     def setup(self) -> None:
