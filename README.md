@@ -39,7 +39,7 @@ Ce projet **nécessite un déploiement sur Google Cloud**, via l’un des servic
 ## 🔐 Variables d’environnement nécessaires
 
 | Variable | Description | Type de stockage metadata |
-|---------|-------------|
+|----------|--------------|---------------------------|
 | `DATABASE_TYPE` | Type de base de metadonnée : "SQL", "GCS" | All |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Chemin vers le fichier JSON du service account | All |
 | `GCS_BUCKET_NAME`               | Nom du bucket GCS pour stocker les fichiers | All |
