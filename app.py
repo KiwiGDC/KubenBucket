@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify, redirect, send_file, abort, render_template, flash
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, File
+from models.file import File
 from datetime import datetime, timedelta, timezone
 import os, uuid, tempfile, bcrypt
 from google.cloud import storage
@@ -10,22 +10,44 @@ from google.auth import default
 from google.auth.transport import requests
 from scan import scan_file
 from utils import generate_signed_url_with_access_token
-from models import AccessScope
+from enums.access_scope import AccessScope
 
-from models import Base
-from sqlalchemy import create_engine
 import threading
-from models import FileStatus
+from enums.file_status import FileStatus
+from repositories.base import FileRepository
+from repositories.sql import FileRepositoryDB
+from repositories.gcs import FileRepositoryGCS
 
 import pymysql
 pymysql.install_as_MySQLdb()
 
-db_url = os.getenv("DATABASE_URL", "sqlite:///data/app.db")
-engine = create_engine(db_url)
-Base.metadata.create_all(engine)  # création des tables systématiquement au lancement
+
+
+def get_repository() -> FileRepository:
+    db_type = os.getenv("DATABASE_TYPE", "sql").lower()
+    if db_type == "sql":
+        engine = create_engine(os.getenv("DATABASE_URL", "sqlite:///files.db"))
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        repo = FileRepositoryDB(session=session, engine=engine)
+
+    elif db_type == "gcs":
+        bucket_name = os.getenv("GCS_BUCKET", "my-bucket")
+        prefix = os.getenv("GCS_PREFIX", "manifests/")
+        repo = FileRepositoryGCS(bucket_name=bucket_name, prefix=prefix)
+
+    else:
+        raise ValueError(f"Unsupported DATABASE_TYPE: {db_type}")
+
+    repo.setup()
+    return repo
+
+
+
+file_repository = get_repository()
 
 app = Flask(__name__)
-Session = sessionmaker(bind=engine)
+
 
 client = storage.Client()
 bucket_name = os.getenv("GCS_BUCKET")
@@ -39,7 +61,6 @@ def not_found(e):
     return render_template("error.html", message="Fichier introuvable ou expiré"), 404
 
 def background_processing(file_id, filepath, filename, expires_in, expire_key, password):
-    session = Session()
 
     try:
         # Scan antivirus
@@ -58,24 +79,27 @@ def background_processing(file_id, filepath, filename, expires_in, expire_key, p
         # Hash password si fourni
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()) if password else None
 
-        # Met à jour en base
-        file_record = session.query(File).get(file_id)
-        file_record.gcs_path = gcs_path
-        file_record.signed_url = signed_url
-        file_record.password_hash = password_hash
-        file_record.expires_at = datetime.now(timezone.utc) + expires_in
-        file_record.status = FileStatus.done
-        file_record.error_message = None
-        session.commit()
+        file_data = file_repository.get_file(file_id)
+        if not file_data:
+            raise Exception("Fichier introuvable dans le repository")
+
+        updates = {
+            "gcs_path": gcs_path,
+            "signed_url": signed_url,
+            "password_hash": password_hash,
+            "expires_at": (datetime.now(timezone.utc) + expires_in).isoformat(),
+            "status": FileStatus.done.value,
+            "error_message": None,
+        }
+        file_repository.update_file(file_id, updates)
 
     except Exception as e:
-        file_record = session.query(File).get(file_id)
-        file_record.status = FileStatus.error
-        file_record.error_message = str(e)
-        session.commit()
+        file_repository.update_file(file_id, {
+            "status": FileStatus.error.value,
+            "error_message": str(e)
+        })
 
     finally:
-        # Nettoyer fichier temporaire
         if os.path.exists(filepath):
             os.unlink(filepath)
 
@@ -106,16 +130,14 @@ def upload():
         expires_in = expires_map.get(expire, timedelta(hours=1))
 
         # Création entrée base avec status processing
-        session = Session()
-        file_record = File(
-            id=upload_id,
-            filename=filename,
-            status=FileStatus.processing,
-            expires_at=datetime.now(timezone.utc) + expires_in,
-            access_scope=access_scope
-        )
-        session.add(file_record)
-        session.commit()
+        file_repository.create_file({
+            "id": upload_id,
+            "filename": filename,
+            "status": FileStatus.processing.value,
+            "expires_at": (datetime.now(timezone.utc) + expires_in).isoformat(),
+            "access_scope": access_scope.value,
+        })
+
 
         # Lance traitement en arrière plan
         thread = threading.Thread(target=background_processing, args=(upload_id, tmp_filepath, filename, expires_in, expire, password))
@@ -128,22 +150,22 @@ def upload():
 
 @app.route("/status/<file_id>", methods=["GET"])
 def status(file_id):
-    session = Session()
-    file_record = session.query(File).get(file_id)
+    file_data = file_repository.get_file(file_id)
 
-    if not file_record:
+    if not file_data:
         return jsonify({"error": "Fichier introuvable"}), 404
 
     resp = {
-        "file_id": file_record.id,
-        "filename": file_record.filename,
-        "status": file_record.status.value,
+        "file_id": file_data["id"],
+        "filename": file_data["filename"],
+        "status": file_data["status"],
     }
-    if file_record.status == FileStatus.done:
-        scope = file_record.access_scope.value
-        resp["url"] = f"/download/{scope}/{file_record.id}"
-    elif file_record.status == FileStatus.error:
-        resp["error_message"] = file_record.error_message
+
+    if file_data["status"] == FileStatus.done.value:
+        scope = file_data["access_scope"]
+        resp["url"] = f"/download/{scope}/{file_data['id']}"
+    elif file_data["status"] == FileStatus.error.value:
+        resp["error_message"] = file_data.get("error_message")
 
     return jsonify(resp)
 
@@ -152,31 +174,26 @@ from flask import request
 @app.route("/download/internal/<uuid:file_id>", methods=["GET", "POST"])
 @app.route("/download/external/<uuid:file_id>", methods=["GET", "POST"])
 def download(file_id):
-    session = Session()
-    file = session.query(File).filter(File.id == str(file_id)).first()
+    file_data = file_repository.get_file(str(file_id))
 
-    if not file:
+    if not file_data:
         return render_template("error.html", message="Lien invalide"), 404
 
-    # Vérification du scope vs URL
+    # Vérification du scope
     requested_scope = "internal" if request.path.startswith("/download/internal/") else "external"
-    if file.access_scope.value != requested_scope:
+    if file_data["access_scope"] != requested_scope:
         return render_template("error.html", message="Accès non autorisé pour ce lien."), 403
 
-    # Vérification expiration
-    expires_at = file.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if datetime.now(timezone.utc) > expires_at:
+    if file_repository.is_expired(file_data):
         return render_template("error.html", message="Lien expiré"), 404
 
-    # Vérification mot de passe si nécessaire
-    if file.password_hash:
+    # Vérification mot de passe
+    if file_data.get("password_hash"):
         if request.method == "GET":
             return render_template("download_form.html")
         password = request.form.get("password", "")
-        if not bcrypt.checkpw(password.encode(), file.password_hash):
+        if not bcrypt.checkpw(password.encode(), file_data["password_hash"]):
             return render_template("download_form.html", error="Mot de passe incorrect.")
 
-    return redirect(file.signed_url)
+    return redirect(file_data["signed_url"])
+

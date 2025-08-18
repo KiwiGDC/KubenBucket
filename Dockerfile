@@ -10,15 +10,13 @@ RUN apt-get update && apt-get install -y \
 # Mettre à jour la base de virus ClamAV (optionnel au build)
 RUN freshclam || true
 
-
 WORKDIR /app
+
+COPY requirements.txt /app
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . /app
 
-
-# Mettre à jour la base de virus ClamAV (optionnel au build)
-RUN freshclam || true
-
-RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
 

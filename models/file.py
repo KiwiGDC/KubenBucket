@@ -2,17 +2,10 @@ from sqlalchemy import Column, String, TIMESTAMP, LargeBinary, Enum, Text
 import enum
 import uuid
 from sqlalchemy.ext.declarative import declarative_base
+from enums.file_status import FileStatus
+from enums.access_scope import AccessScope
 
 Base = declarative_base()
-
-class FileStatus(enum.Enum):
-    processing = "processing"
-    done = "done"
-    error = "error"
-
-class AccessScope(enum.Enum):
-    internal = "internal"
-    external = "external"
 
 class File(Base):
     __tablename__ = "files"
