@@ -8,7 +8,7 @@ Application web légère permettant de transférer des fichiers en toute sécuri
 
 - Upload de fichiers via une interface web moderne
 - Protection optionnelle par mot de passe (stocké haché)
-- Expiration configurable : 15 min, 1h, 24h, 7 jours
+- Expiration configurable : 1d, 2d, 5d, 7d
 - Lien de téléchargement unique
 - **Scan antivirus via ClamAV** à l'upload
 - Traitement asynchrone en arrière-plan
@@ -32,7 +32,7 @@ Ce projet **nécessite un déploiement sur Google Cloud**, via l’un des servic
 
 - 🔐 **Service Account GCP**
 - 🪣 **Bucket GCS** pour stocker les fichiers
-- 🧪 **Base de données SQL (MySQL ou autre via SQLAlchemy)**
+- 🧪 **Base de données SQL (MySQL ou autre via SQLAlchemy)** (Optionnel si metadata dans le Bucket GCS)
 
 ---
 
