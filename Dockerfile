@@ -7,6 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm install
 
 COPY tailwind.config.js ./
+COPY templates ./templates
 COPY assets ./assets
 
 RUN npm run build:css

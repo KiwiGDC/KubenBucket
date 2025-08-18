@@ -131,12 +131,12 @@ def upload():
         file.save(tmp_filepath)
 
         expires_map = {
-            "15min": timedelta(minutes=15),
-            "1h": timedelta(hours=1),
-            "24h": timedelta(hours=24),
+            "1d": timedelta(days=1),
+            "2d": timedelta(days=2),
+            "5d": timedelta(days=5),
             "7d": timedelta(days=7)
         }
-        expires_in = expires_map.get(expire, timedelta(hours=1))
+        expires_in = expires_map.get(expire, timedelta(days=1))
 
         # Création entrée base avec status processing
         file_repository.create_file({
