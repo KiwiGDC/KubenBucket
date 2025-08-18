@@ -38,12 +38,14 @@ Ce projet **nécessite un déploiement sur Google Cloud**, via l’un des servic
 
 ## 🔐 Variables d’environnement nécessaires
 
-| Variable | Description |
+| Variable | Description | Type de stockage metadata |
 |---------|-------------|
-| `GOOGLE_APPLICATION_CREDENTIALS` | Chemin vers le fichier JSON du service account |
-| `GCS_BUCKET_NAME`               | Nom du bucket GCS pour stocker les fichiers |
-| `DATABASE_URL`                 | URL de connexion SQLAlchemy à ta base MySQL/PostgreSQL |
-| `SERVICE_ACCOUNT_EMAIL`        | Email du Service Account utilisé (pour signer les URLs GCS) |
+| `DATABASE_TYPE` | Type de base de metadonnée : "SQL", "GCS" | All |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Chemin vers le fichier JSON du service account | All |
+| `GCS_BUCKET_NAME`               | Nom du bucket GCS pour stocker les fichiers | All |
+| `GCS_PREFIX`                    | Prefix du dossier pour le manifest (Si le GCS est utilisé pour stocker metdata) | GCS |
+| `DATABASE_URL`                 | URL de connexion SQLAlchemy à ta base MySQL/PostgreSQL | DATABASE_URL |
+| `SERVICE_ACCOUNT_EMAIL`        | Email du Service Account utilisé (pour signer les URLs GCS) | ALL |
 
 ---
 

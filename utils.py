@@ -4,11 +4,12 @@ from datetime import datetime, timedelta
 import os
 import threading
 import uuid
-
+from gcs_client import GCSClient
 
 
 def generate_signed_url_with_access_token(blob, expires):
-    credentials, _ = google.auth.default()
+    credentials = GCSClient.get_credentials()
+
 
     # Rafraîchir le token d'accès
     auth_req = requests.Request()

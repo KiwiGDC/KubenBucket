@@ -1,160 +1,215 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="form-container">
-  <h3>Transférer un fichier</h3>
-  <form id="upload-form">
-    <label>Fichier</label>
-    <input type="file" id="file" name="file" required>
-
-    <label>Mot de passe (optionnel)</label>
-    <input type="password" id="password" name="password">
-
-    <label>Durée d’expiration</label>
-    <select id="expire" name="expire" required>
-      <option value="15min">15 minutes</option>
-      <option value="1h">1 heure</option>
-      <option value="24h" selected>24 heures</option>
-      <option value="7d">7 jours</option>
-    </select>
-    <label>
-      <input type="checkbox" id="access_internal" name="access_internal">
-      Accès interne uniquement
-    </label>
-    <button type="submit" id="submit-btn">Envoyer</button>
-
-    <!-- Progress Bar -->
-    <div class="progress" id="progress-container">
-      <div class="progress-bar" id="progress-bar">0%</div>
+<div class="bg-white rounded-lg shadow-lg p-8 mt-20 max-w-xl mx-auto">
+  <h3 class="text-2xl font-semibold mb-6">Transférer un fichier</h3>
+  <form id="upload-form" class="space-y-5">
+    <div>
+      <label for="file" class="block mb-1 font-medium text-gray-800">Fichier</label>
+      <input type="file" id="file" name="file" required
+        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
     </div>
 
-    <div id="status" class="status-message"></div>
+    <div>
+      <label for="password" class="block mb-1 font-medium text-gray-800">Mot de passe (optionnel)</label>
+      <input type="password" id="password" name="password"
+        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    </div>
+
+    <div>
+      <label for="expire" class="block mb-1 font-medium text-gray-800">Durée d’expiration</label>
+      <select id="expire" name="expire" required
+        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="15min">15 minutes</option>
+        <option value="1h">1 heure</option>
+        <option value="24h" selected>24 heures</option>
+        <option value="7d">7 jours</option>
+      </select>
+    </div>
+
+    <div class="flex items-center space-x-2">
+      <input type="checkbox" id="access_internal" name="access_internal" class="h-4 w-4 text-blue-600 rounded" />
+      <label for="access_internal" class="font-medium text-gray-800 select-none">Accès interne uniquement</label>
+    </div>
+
+    <button type="submit" id="submit-btn"
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition-colors duration-200">
+      Envoyer
+    </button>
+
+    <!-- Progress Bar -->
+    <div class="relative w-full h-5 bg-gray-300 rounded mt-4 hidden" id="progress-container" role="progressbar"
+      aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div id="progress-bar" class="h-5 bg-blue-600 text-white text-center leading-5 rounded transition-all"
+        style="width: 0%;">0%</div>
+    </div>
+
+    <div id="status" class="mt-4 text-center"></div>
   </form>
-</div>
+  <div id="upload-result" class="mt-4 p-4 rounded hidden">
+    <div id="upload-message" class="mb-2 text-center font-semibold"></div>
+    <div id="upload-link-container" class="break-words text-center hidden">
+      <strong>Lien :</strong>
+      <span id="file-url" class="text-blue-700 underline cursor-pointer"></span>
+      <button type="button" id="copy-btn"
+        class="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+        Copier
+      </button>
+      <span id="copy-feedback" class="ml-2 text-sm text-green-600 hidden">Copié ✅</span>
+    </div>
+  </div>
+  
 
 <script>
-document.getElementById("upload-form").addEventListener("submit", function(e) {
-  e.preventDefault();
-
-  const form = e.target;
-  const formData = new FormData(form);
+  document.getElementById("upload-form").addEventListener("submit", function (e) {
+    e.preventDefault();
   
-  const xhr = new XMLHttpRequest();
-  const progressContainer = document.getElementById("progress-container");
-  const progressBar = document.getElementById("progress-bar");
-  const status = document.getElementById("status");
-  const submitBtn = document.getElementById("submit-btn");
-
-  formData.append("access_internal", document.getElementById("access_internal").checked);
-
-
-  progressContainer.style.display = "block";
-  progressBar.style.width = "0%";
-  progressBar.innerText = "0%";
-  progressBar.className = "progress-bar";
-  status.innerHTML = "";
-  submitBtn.disabled = true;
-  submitBtn.innerText = "Envoi...";
-
-  xhr.upload.addEventListener("progress", function(e) {
-    if (e.lengthComputable) {
-      const percent = Math.round((e.loaded / e.total) * 100);
-      progressBar.style.width = percent + "%";
-      progressBar.innerText = percent + "%";
-    }
-  });
-
-  xhr.onload = function() {
-    if (xhr.status === 202) {
-      const data = JSON.parse(xhr.responseText);
-      const uploadId = data.upload_id;
-      status.innerHTML = `<div class="info">Fichier reçu. Analyse et upload en cours...</div>`;
-
-      // Ne pas réactiver le bouton tout de suite : on attend la fin du traitement
-      // submitBtn.disabled = false;  --> suppression
-
-      const intervalId = setInterval(() => {
-        fetch(`/status/${uploadId}`)
-          .then(res => res.json())
-          .then(resData => {
-            if (resData.status === "done") {
+    const form = e.target;
+    const formData = new FormData(form);
+  
+    const xhr = new XMLHttpRequest();
+    const progressContainer = document.getElementById("progress-container");
+    const progressBar = document.getElementById("progress-bar");
+    const submitBtn = document.getElementById("submit-btn");
+  
+    // Nouveaux éléments pour afficher le status de façon stylisée
+    const uploadResult = document.getElementById("upload-result");
+    const uploadMessage = document.getElementById("upload-message");
+    const uploadLinkContainer = document.getElementById("upload-link-container");
+    const fileUrl = document.getElementById("file-url");
+    const copyBtn = document.getElementById("copy-btn");
+    const copyFeedback = document.getElementById("copy-feedback");
+  
+    // Reset affichage
+    progressContainer.classList.remove("hidden");
+    progressBar.style.width = "0%";
+    progressBar.textContent = "0%";
+    progressBar.className = "h-5 bg-blue-600 text-white text-center leading-5 rounded transition-all";
+    uploadResult.classList.add("hidden");
+    uploadMessage.textContent = "";
+    uploadLinkContainer.classList.add("hidden");
+  
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Envoi...";
+  
+    xhr.upload.addEventListener("progress", function (e) {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        progressBar.style.width = percent + "%";
+        progressBar.textContent = percent + "%";
+      }
+    });
+  
+    xhr.onload = function () {
+      if (xhr.status === 202) {
+        const data = JSON.parse(xhr.responseText);
+        const uploadId = data.upload_id;
+  
+        // Afficher message de réception fichier
+        uploadMessage.textContent = "Fichier reçu. Analyse et upload en cours...";
+        uploadMessage.className = "mb-2 text-center font-semibold text-blue-700";
+        uploadResult.className = "mt-4 p-4 rounded bg-blue-50";
+        uploadLinkContainer.classList.add("hidden");
+        uploadResult.classList.remove("hidden");
+  
+        const intervalId = setInterval(() => {
+          fetch(`/status/${uploadId}`)
+            .then(res => res.json())
+            .then(resData => {
+              if (resData.status === "done") {
+                clearInterval(intervalId);
+                progressBar.style.width = "100%";
+                progressBar.textContent = "100%";
+                progressBar.classList.remove("bg-blue-600");
+                progressBar.classList.add("bg-green-600");
+  
+                uploadMessage.textContent = "✅ Fichier prêt !";
+                uploadMessage.className = "mb-2 text-center font-semibold text-green-700";
+                uploadResult.className = "mt-4 p-4 rounded bg-green-50";
+                fileUrl.textContent = location.origin + resData.url;
+                uploadLinkContainer.classList.remove("hidden");
+                copyFeedback.classList.add("hidden");
+  
+                copyBtn.onclick = () => {
+                  navigator.clipboard.writeText(fileUrl.textContent).then(() => {
+                    copyFeedback.classList.remove("hidden");
+                    setTimeout(() => copyFeedback.classList.add("hidden"), 2000);
+                  });
+                };
+  
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Envoyer";
+  
+                setTimeout(() => progressContainer.classList.add("hidden"), 2000);
+  
+              } else if (resData.status === "error") {
+                clearInterval(intervalId);
+                progressBar.classList.remove("bg-blue-600");
+                progressBar.classList.add("bg-red-600");
+  
+                uploadMessage.textContent = `❌ ${resData.error_message || "Erreur lors du traitement."}`;
+                uploadMessage.className = "mb-2 text-center font-semibold text-red-700";
+                uploadResult.className = "mt-4 p-4 rounded bg-red-50";
+                uploadLinkContainer.classList.add("hidden");
+                uploadResult.classList.remove("hidden");
+  
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Envoyer";
+  
+                setTimeout(() => progressContainer.classList.add("hidden"), 2000);
+              }
+            })
+            .catch(() => {
               clearInterval(intervalId);
-              progressBar.style.width = "100%";
-              progressBar.innerText = "100%";
-              progressBar.classList.add("success");
-
-              status.innerHTML = `
-                <div class="success">
-                  ✅ Fichier prêt !<br>
-                  <strong>Lien :</strong>
-                  <span id="file-url" class="file-url">${location.origin + resData.url}</span>
-                  <button id="copy-btn" class="copy-btn" type="button">Copier</button>
-                  <span id="copy-feedback" class="copy-feedback" style="display:none;">Copié ✅</span>
-                </div>`;
-
-              const copyBtn = document.getElementById("copy-btn");
-              const feedback = document.getElementById("copy-feedback");
-              const urlText = document.getElementById("file-url").textContent;
-
-              copyBtn.addEventListener("click", () => {
-                navigator.clipboard.writeText(urlText).then(() => {
-                  feedback.style.display = "inline";
-                  setTimeout(() => feedback.style.display = "none", 2000);
-                });
-              });
-
-              // Réactiver le bouton après succès
+              progressBar.classList.remove("bg-blue-600");
+              progressBar.classList.add("bg-red-600");
+  
+              uploadMessage.textContent = "❌ Erreur réseau.";
+              uploadMessage.className = "mb-2 text-center font-semibold text-red-700";
+              uploadResult.className = "mt-4 p-4 rounded bg-red-50";
+              uploadLinkContainer.classList.add("hidden");
+              uploadResult.classList.remove("hidden");
+  
               submitBtn.disabled = false;
-              submitBtn.innerText = "Envoyer";
-
-              setTimeout(() => progressContainer.style.display = "none", 2000);
-            } else if (resData.status === "error") {
-              clearInterval(intervalId);
-              progressBar.classList.add("error");
-              status.innerHTML = `<div class="error">❌ ${resData.error_message || "Erreur lors du traitement."}</div>`;
-
-              // Réactiver le bouton après erreur
-              submitBtn.disabled = false;
-              submitBtn.innerText = "Envoyer";
-
-              setTimeout(() => progressContainer.style.display = "none", 2000);
-            }
-          })
-          .catch(() => {
-            clearInterval(intervalId);
-            progressBar.classList.add("error");
-            status.innerHTML = `<div class="error">❌ Erreur réseau.</div>`;
-
-            // Réactiver le bouton après erreur réseau
-            submitBtn.disabled = false;
-            submitBtn.innerText = "Envoyer";
-
-            setTimeout(() => progressContainer.style.display = "none", 2000);
-          });
-      }, 10000);
-
-    } else {
-      const error = JSON.parse(xhr.responseText);
-      progressBar.classList.add("error");
-      status.innerHTML = `<div class="error">❌ ${error.error || "Erreur lors de l'envoi."}</div>`;
-
-      // Réactiver le bouton en cas d'erreur immédiate
+              submitBtn.textContent = "Envoyer";
+  
+              setTimeout(() => progressContainer.classList.add("hidden"), 2000);
+            });
+        }, 10000);
+  
+      } else {
+        const error = JSON.parse(xhr.responseText);
+        progressBar.classList.remove("bg-blue-600");
+        progressBar.classList.add("bg-red-600");
+  
+        uploadMessage.textContent = `❌ ${error.error || "Erreur lors de l'envoi."}`;
+        uploadMessage.className = "mb-2 text-center font-semibold text-red-700";
+        uploadLinkContainer.classList.add("hidden");
+        uploadResult.classList.remove("hidden");
+  
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Envoyer";
+  
+        setTimeout(() => progressContainer.classList.add("hidden"), 2000);
+      }
+    };
+  
+    xhr.onerror = function () {
       submitBtn.disabled = false;
-      submitBtn.innerText = "Envoyer";
-
-      setTimeout(() => progressContainer.style.display = "none", 2000);
-    }
-  };
-
-  xhr.onerror = function() {
-    submitBtn.disabled = false;
-    submitBtn.innerText = "Envoyer";
-    progressBar.classList.add("error");
-    status.innerHTML = `<div class="error">❌ Erreur réseau.</div>`;
-    setTimeout(() => progressContainer.style.display = "none", 2000);
-  };
-
-  xhr.open("POST", "/upload");
-  xhr.send(formData);
-});
-</script>
+      submitBtn.textContent = "Envoyer";
+      progressBar.classList.remove("bg-blue-600");
+      progressBar.classList.add("bg-red-600");
+  
+      uploadMessage.textContent = "❌ Erreur réseau.";
+      uploadMessage.className = "mb-2 text-center font-semibold text-red-700";
+      uploadLinkContainer.classList.add("hidden");
+      uploadResult.classList.remove("hidden");
+  
+      setTimeout(() => progressContainer.classList.add("hidden"), 2000);
+    };
+  
+    xhr.open("POST", "/upload");
+    xhr.send(formData);
+  });
+  </script>
+  
 {% endblock %}
